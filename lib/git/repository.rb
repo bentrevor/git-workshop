@@ -30,10 +30,9 @@ class Repository
   end
 
   def commit(message)
-    save_all_tracked_file_contents
+    take_snapshot_of_contents
 
     commit = Git::Commit.new(staged, message)
-    commits << commit
 
     reset_staging_area
     add_new_commit(commit)
@@ -56,7 +55,7 @@ class Repository
     if options.include?(:D)
       branches.delete name
     else
-      branches[name] = []
+      branches[name] = branches[self.HEAD]
     end
   end
 
@@ -106,17 +105,7 @@ class Repository
 
   private
 
-  def reset_staging_area
-    working_directory[:unstaged] = staged
-    working_directory[:staged] = []
-  end
-
-  def add_new_commit(commit)
-    commit.parents << branches[self.HEAD]
-    branches[self.HEAD] = commit
-  end
-
-  def save_all_tracked_file_contents
+  def take_snapshot_of_contents
     tracked_files = staged + unstaged
     contents = {}
     tracked_files.each do |file|
@@ -124,5 +113,16 @@ class Repository
     end
 
     self.previous_commit_contents = contents
+  end
+
+  def reset_staging_area
+    working_directory[:unstaged] = staged
+    working_directory[:staged] = []
+  end
+
+  def add_new_commit(commit)
+    commit.parents << branches[self.HEAD]
+    commits << commit
+    branches[self.HEAD] = commit
   end
 end
