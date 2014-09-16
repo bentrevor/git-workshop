@@ -285,15 +285,17 @@ describe Repository do
       expect(merge_commit.tree.first.content).to eq 'new content (on master)'
     end
 
-    it 'can fetch remote branches' do
+    it "can fetch another repo's branches and commits without changing the current branch" do
       other_repo = Repository.new 'other_name'
       file = other_repo.new_file '/file/path', 'content'
       other_repo.add file
-      other_repo.commit 'initial commit'
+      commit = other_repo.commit 'initial commit'
 
       repo.fetch other_repo
 
-      expect(repo.branches[:remote_branches][:other_name__master]).not_to be_nil
+      expect(repo.branches[:remote_branches][:other_name__master]).to eq commit.sha
+      expect(repo.commits.length).to be 1
+      expect(repo.HEAD).to eq :master
     end
   end
 end

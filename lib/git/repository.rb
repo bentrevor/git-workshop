@@ -115,6 +115,8 @@ class Repository
       remote_branch_name = "#{other_repo.name}__#{branch}".to_sym
       branches[:remote_branches][remote_branch_name] = other_repo.branches[branch]
     end
+
+    commits.merge! other_repo.commits
   end
 
   def modified_files
