@@ -3,7 +3,7 @@ class Repository
 
   def initialize(name)
     self.name = name
-    self.branches = {:master => nil}
+    self.branches = { :master => nil, :remote_branches => {} }
     self.HEAD = :master
     self.commits = {}
 
@@ -108,9 +108,12 @@ class Repository
     merge_commit
   end
 
-  def resolve_conflicts(tree, branch)
-    tree.select! do |file|
-      commits[branches[branch]].tree.include? file
+  def fetch(other_repo)
+    other_repo.branches.keys.each do |branch|
+      next if branch == :remote_branches
+
+      remote_branch_name = "#{other_repo.name}__#{branch}".to_sym
+      branches[:remote_branches][remote_branch_name] = other_repo.branches[branch]
     end
   end
 
@@ -157,5 +160,11 @@ class Repository
 
   def merge_conflict?(tree)
     tree.length != tree.map(&:path).uniq.length
+  end
+
+  def resolve_conflicts(tree, branch)
+    tree.select! do |file|
+      commits[branches[branch]].tree.include? file
+    end
   end
 end
