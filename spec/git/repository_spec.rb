@@ -131,6 +131,21 @@ describe Repository do
 
         expect(second_commit.parents).to include first_commit.sha
       end
+
+      it 'keeps unstaged files in the tree' do
+        file = repo.new_file '/file/path', 'content'
+        repo.add file
+        repo.commit 'initial commit'
+
+        second_file = repo.new_file '/second_file/path', 'second content'
+        repo.add second_file
+        repo.commit 'second commit (on bug_fix)'
+
+        master = repo.commits[repo.branches[:master]]
+
+        expect(master.tree).to include file
+        expect(master.tree).to include second_file
+      end
     end
 
     describe '#checkout' do
@@ -242,6 +257,32 @@ describe Repository do
       expect(merge_commit.tree.length).to eq 2
       expect(merge_commit.tree).to include file
       expect(merge_commit.tree).to include second_file
+    end
+
+    it "resolves merge conflicts" do
+      file = repo.new_file '/file/path', 'content'
+      repo.add file
+      repo.commit 'initial commit'
+
+      repo.branch :bug_fix
+
+      file.content = 'new content (on master)'
+      repo.add file
+      repo.commit 'second commit (still on master)'
+
+      repo.checkout :bug_fix
+
+      conflict_file = repo.new_file '/file/path', 'different content'
+      repo.add conflict_file
+      repo.commit 'second commit (now on bug_fix)'
+
+      repo.checkout :master
+      expect { repo.merge :bug_fix }.to raise_error(Git::MergeConflict)
+      expect(repo.commits.length).to eq 3
+
+      merge_commit = repo.merge :bug_fix, :master
+      expect(repo.commits.length).to eq 4
+      expect(merge_commit.tree.first.content).to eq 'new content (on master)'
     end
   end
 end

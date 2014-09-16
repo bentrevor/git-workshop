@@ -12,4 +12,7 @@ module Git
 
   class File < Struct.new(:path, :content)
   end
+
+  class MergeConflict < StandardError
+  end
 end

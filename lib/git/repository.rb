@@ -32,7 +32,8 @@ class Repository
   def commit(message)
     take_snapshot_of_contents
 
-    commit = Git::Commit.new(staged, message)
+    new_tree = staged + unstaged
+    commit = Git::Commit.new(new_tree, message)
 
     reset_staging_area
     add_new_commit(commit)
@@ -85,19 +86,32 @@ class Repository
     end
   end
 
-  def merge(branch)
+  def merge(branch, conflict_resolution_branch=nil)
     merge_commit_message = "Merge branch #{branch} into #{self.HEAD}"
-    first_parent         = branches[branch]
-    second_parent        = branches[self.HEAD]
-    merge_commit_tree    = commits[first_parent].tree + commits[second_parent].tree
+    first_parent_sha     = branches[branch]
+    second_parent_sha    = branches[self.HEAD]
+    merge_commit_tree    = (commits[first_parent_sha].tree + commits[second_parent_sha].tree).uniq
 
-    merge_commit = Git::Commit.new(merge_commit_tree, merge_commit_message)
-    merge_commit.parents << first_parent
-    merge_commit.parents << second_parent
+    if merge_conflict?(merge_commit_tree)
+      if conflict_resolution_branch
+        resolve_conflicts(merge_commit_tree, conflict_resolution_branch)
+      else
+        raise Git::MergeConflict
+      end
+    end
 
-    commits[merge_commit.sha] = merge_commit
+    merge_commit = Git::Commit.new(merge_commit_tree.uniq, merge_commit_message)
+    merge_commit.parents << first_parent_sha
+
+    add_new_commit merge_commit
 
     merge_commit
+  end
+
+  def resolve_conflicts(tree, branch)
+    tree.select! do |file|
+      commits[branches[branch]].tree.include? file
+    end
   end
 
   def modified_files
@@ -139,5 +153,9 @@ class Repository
     commit.parents << branches[self.HEAD]
     commits[commit.sha] = commit
     branches[self.HEAD] = commit.sha
+  end
+
+  def merge_conflict?(tree)
+    tree.length != tree.map(&:path).uniq.length
   end
 end
