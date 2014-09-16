@@ -119,6 +119,11 @@ class Repository
     commits.merge! other_repo.commits
   end
 
+  def pull(other_repo, branch)
+    fetch other_repo
+    branches[self.HEAD] = other_repo.branches[branch]
+  end
+
   def modified_files
     unstaged.select do |file|
       file.content != previous_commit_contents[file.path]

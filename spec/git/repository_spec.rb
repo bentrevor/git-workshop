@@ -297,5 +297,16 @@ describe Repository do
       expect(repo.commits.length).to be 1
       expect(repo.HEAD).to eq :master
     end
+
+    specify "pulling a branch from a repo fetches and merges" do
+      other_repo = Repository.new 'other_name'
+      file = other_repo.new_file '/file/path', 'content'
+      other_repo.add file
+      commit = other_repo.commit 'initial commit'
+
+      repo.pull other_repo, :master
+
+      expect(repo.branches[repo.HEAD]).to eq other_repo.branches[other_repo.HEAD]
+    end
   end
 end
