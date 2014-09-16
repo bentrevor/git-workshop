@@ -4,7 +4,6 @@ describe Repository do
   let(:repo) { Repository.new 'name' }
 
   context 'week 1' do
-
     it 'has a name' do
       expect(repo.name).to eq 'name'
     end
@@ -93,11 +92,11 @@ describe Repository do
         expect(repo.previous_commit_contents[path]).to eq 'content'
       end
 
-      it 'keeps track of all commits' do
+      it 'keeps track of all commits by their sha' do
         repo.working_directory[:staged] = [Git::File.new('file/path', 'content')]
         commit = repo.commit 'commit message'
 
-        expect(repo.commits).to include commit
+        expect(repo.commits[commit.sha]).to eq commit
       end
 
       it 'unstages files after the commit is created' do
@@ -118,19 +117,19 @@ describe Repository do
         repo.working_directory[:staged] = [Git::File.new('file/path', 'content')]
         commit = repo.commit 'commit message'
 
-        expect(repo.branches[:master]).to eq commit
+        expect(repo.branches[:master]).to eq commit.sha
 
         newer_commit = repo.commit 'commit message 2'
-        expect(repo.branches[:master]).to eq newer_commit
+        expect(repo.branches[:master]).to eq newer_commit.sha
       end
 
       it 'keeps track of the parent commit' do
-        first_commit = double 'commit'
-        repo.branches[:master] = first_commit
+        first_commit = double('commit', :sha => '1234567')
+        repo.branches[:master] = first_commit.sha
         repo.working_directory[:staged] = [Git::File.new('file/path', 'content')]
         second_commit = repo.commit 'commit message'
 
-        expect(second_commit.parents).to include first_commit
+        expect(second_commit.parents).to include first_commit.sha
       end
     end
 
@@ -212,8 +211,37 @@ describe Repository do
 
         repo.reset(first_commit.sha)
 
-        expect(repo.branches[repo.HEAD]).to eq first_commit
+        expect(repo.branches[repo.HEAD]).to eq first_commit.sha
       end
+    end
+  end
+
+  context 'week 2' do
+    it 'can "merge" two branches' do
+      file = repo.new_file '/file/path', 'content'
+      repo.add file
+      repo.commit 'initial commit'
+
+      file.content = 'new content'
+      repo.add file
+      repo.commit 'second commit (on master)'
+
+      repo.branch :bug_fix
+      repo.checkout :bug_fix
+
+      second_file = repo.new_file '/second_file/path', 'second content'
+      repo.add second_file
+      repo.commit 'second commit (on bug_fix)'
+
+      repo.checkout :master
+      merge_commit = repo.merge :bug_fix
+
+      expect(repo.commits.length).to eq 4
+      expect(merge_commit.parents.length).to eq 2
+
+      expect(merge_commit.tree.length).to eq 2
+      expect(merge_commit.tree).to include file
+      expect(merge_commit.tree).to include second_file
     end
   end
 end

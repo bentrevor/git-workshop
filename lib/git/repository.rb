@@ -5,7 +5,7 @@ class Repository
     self.name = name
     self.branches = {:master => nil}
     self.HEAD = :master
-    self.commits = []
+    self.commits = {}
 
     self.working_directory = {
       :staged => [],
@@ -47,8 +47,8 @@ class Repository
   end
 
   def reset(new_sha)
-    new_commit = commits.find { |c| c.sha == new_sha }
-    branches[self.HEAD] = new_commit
+    new_commit = commits[new_sha]
+    branches[self.HEAD] = new_commit.sha
   end
 
   def branch(name, *options)
@@ -79,10 +79,25 @@ class Repository
 
   def log
     if commits.any?
-      "* #{commits.map(&:message).reverse.join "\n* "}"
+      "* #{commits.values.map(&:message).reverse.join "\n* "}"
     else
       ''
     end
+  end
+
+  def merge(branch)
+    merge_commit_message = "Merge branch #{branch} into #{self.HEAD}"
+    first_parent         = branches[branch]
+    second_parent        = branches[self.HEAD]
+    merge_commit_tree    = commits[first_parent].tree + commits[second_parent].tree
+
+    merge_commit = Git::Commit.new(merge_commit_tree, merge_commit_message)
+    merge_commit.parents << first_parent
+    merge_commit.parents << second_parent
+
+    commits[merge_commit.sha] = merge_commit
+
+    merge_commit
   end
 
   def modified_files
@@ -122,7 +137,7 @@ class Repository
 
   def add_new_commit(commit)
     commit.parents << branches[self.HEAD]
-    commits << commit
-    branches[self.HEAD] = commit
+    commits[commit.sha] = commit
+    branches[self.HEAD] = commit.sha
   end
 end
