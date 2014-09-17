@@ -1,11 +1,12 @@
 class Repository
-  attr_accessor :branches, :commits, :working_directory, :name, :previous_commit_contents, :HEAD
+  attr_accessor :branches, :commits, :working_directory, :name, :previous_commit_contents, :HEAD, :remotes
 
   def initialize(name)
     self.name = name
     self.branches = { :master => nil, :remote_branches => {} }
     self.HEAD = :master
     self.commits = {}
+    self.remotes = []
 
     self.working_directory = {
       :staged => [],
@@ -108,7 +109,18 @@ class Repository
     merge_commit
   end
 
+  def remote(command, repo)
+    case command
+    when :add
+      remotes << repo
+    when :remove
+      remotes.delete repo
+    end
+  end
+
   def fetch(other_repo)
+    raise Git::RemoteDoesNotExist unless remotes.include?(other_repo)
+
     other_repo.branches.keys.each do |branch|
       next if branch == :remote_branches
 

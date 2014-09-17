@@ -15,4 +15,7 @@ module Git
 
   class MergeConflict < StandardError
   end
+
+  class RemoteDoesNotExist < StandardError
+  end
 end

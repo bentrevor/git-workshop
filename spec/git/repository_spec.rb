@@ -285,8 +285,20 @@ describe Repository do
       expect(merge_commit.tree.first.content).to eq 'new content (on master)'
     end
 
-    it "can fetch another repo's branches and commits without changing the current branch" do
+    it 'can add and remove remotes' do
       other_repo = Repository.new 'other_name'
+
+      repo.remote(:add, other_repo)
+      expect(repo.remotes).to include other_repo
+
+      repo.remote(:remove, other_repo)
+      expect(repo.remotes).not_to include other_repo
+    end
+
+    it "can fetch another remote's branches and commits without changing the current branch" do
+      other_repo = Repository.new 'other_name'
+      repo.remote :add, other_repo
+
       file = other_repo.new_file '/file/path', 'content'
       other_repo.add file
       commit = other_repo.commit 'initial commit'
@@ -298,8 +310,20 @@ describe Repository do
       expect(repo.HEAD).to eq :master
     end
 
+    it 'only fetches from remotes that have been added' do
+      other_repo = Repository.new 'other_name'
+
+      file = other_repo.new_file '/file/path', 'content'
+      other_repo.add file
+      commit = other_repo.commit 'initial commit'
+
+      expect { repo.fetch other_repo }.to raise_error(Git::RemoteDoesNotExist)
+    end
+
     specify "pulling a branch from a repo fetches and merges" do
       other_repo = Repository.new 'other_name'
+      repo.remote :add, other_repo
+
       file = other_repo.new_file '/file/path', 'content'
       other_repo.add file
       commit = other_repo.commit 'initial commit'
