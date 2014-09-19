@@ -231,7 +231,7 @@ describe Repository do
     end
   end
 
-  context 'week 2' do
+  xcontext 'week 2' do
     it 'can "merge" two branches' do
       file = repo.new_file '/file/path', 'content'
       repo.add file

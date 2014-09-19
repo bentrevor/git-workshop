@@ -88,52 +88,15 @@ class Repository
   end
 
   def merge(branch, conflict_resolution_branch=nil)
-    merge_commit_message = "Merge branch #{branch} into #{self.HEAD}"
-    first_parent_sha     = branches[branch]
-    second_parent_sha    = branches[self.HEAD]
-    merge_commit_tree    = (commits[first_parent_sha].tree + commits[second_parent_sha].tree).uniq
-
-    if merge_conflict?(merge_commit_tree)
-      if conflict_resolution_branch
-        resolve_conflicts(merge_commit_tree, conflict_resolution_branch)
-      else
-        raise Git::MergeConflict
-      end
-    end
-
-    merge_commit = Git::Commit.new(merge_commit_tree.uniq, merge_commit_message)
-    merge_commit.parents << first_parent_sha
-
-    add_new_commit merge_commit
-
-    merge_commit
   end
 
   def remote(command, repo)
-    case command
-    when :add
-      remotes << repo
-    when :remove
-      remotes.delete repo
-    end
   end
 
   def fetch(other_repo)
-    raise Git::RemoteDoesNotExist unless remotes.include?(other_repo)
-
-    other_repo.branches.keys.each do |branch|
-      next if branch == :remote_branches
-
-      remote_branch_name = "#{other_repo.name}__#{branch}".to_sym
-      branches[:remote_branches][remote_branch_name] = other_repo.branches[branch]
-    end
-
-    commits.merge! other_repo.commits
   end
 
   def pull(other_repo, branch)
-    fetch other_repo
-    branches[self.HEAD] = other_repo.branches[branch]
   end
 
   def modified_files
@@ -175,15 +138,5 @@ class Repository
     commit.parents << branches[self.HEAD]
     commits[commit.sha] = commit
     branches[self.HEAD] = commit.sha
-  end
-
-  def merge_conflict?(tree)
-    tree.length != tree.map(&:path).uniq.length
-  end
-
-  def resolve_conflicts(tree, branch)
-    tree.select! do |file|
-      commits[branches[branch]].tree.include? file
-    end
   end
 end
